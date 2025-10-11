@@ -1,0 +1,61 @@
+// src/lib/schema.ts
+import { z } from 'zod'
+
+export const IngredientSchema = z.object({
+  name: z.string(),
+  qty: z.string().optional().default(''),
+  optional: z.boolean().optional().default(false), // ← 과거 호환용(유지)
+  substitution: z.string().optional(),
+  // ✅ 새로 추가: 재료 타입
+  type: z.enum(['필수', '선택', '대체']).optional().default('필수'),
+})
+
+export const StepSchema = z.object({
+  order: z.number().int().positive(),
+  instruction: z.string(),
+  timerSec: z.number().int().positive().optional(),
+})
+
+export const NutritionSchema = z.object({
+  kcal: z.number().nonnegative().optional().default(0),
+  protein: z.number().nonnegative().optional().default(0),
+  fat: z.number().nonnegative().optional().default(0),
+  carb: z.number().nonnegative().optional().default(0),
+})
+
+export const RecipeSchema = z.object({
+  title: z.string(),
+  cookingTimeMin: z.number().int().positive().optional().default(15),
+  difficulty: z.enum(['초급', '중급', '고급']).optional().default('초급'),
+  ingredients: z.array(IngredientSchema),
+  steps: z.array(StepSchema).min(1),
+  nutrition: NutritionSchema.optional().default({}),
+  tips: z.array(z.string()).optional().default([]),
+  warnings: z.array(z.string()).optional().default([]),
+})
+
+export type Recipe = z.infer<typeof RecipeSchema>
+
+export const PantryInputSchema = z.object({
+  mode: z.literal('pantry'),
+  ingredients: z.array(z.string()).min(1),
+  servings: z.number().int().positive().default(2),
+  timeLimit: z.number().int().positive().max(240).default(30),
+  allergies: z.array(z.string()).default([]),
+  preferences: z.array(z.string()).default([]),
+  diets: z.array(z.string()).default([]),
+})
+
+export const DishInputSchema = z.object({
+  mode: z.literal('dish'),
+  dishName: z.string().min(1),
+  servings: z.number().int().positive().default(2),
+  timeLimit: z.number().int().positive().max(240).default(30),
+  allergies: z.array(z.string()).default([]),
+  preferences: z.array(z.string()).default([]),
+  diets: z.array(z.string()).default([]),
+})
+
+export const AnyInputSchema = z.discriminatedUnion('mode', [PantryInputSchema, DishInputSchema])
+export type AnyInput = z.infer<typeof AnyInputSchema>
+
