@@ -1,12 +1,11 @@
-// src/lib/schema.ts
 import { z } from 'zod'
 
 export const IngredientSchema = z.object({
   name: z.string(),
   qty: z.string().optional().default(''),
-  optional: z.boolean().optional().default(false), // ← 과거 호환용(유지)
+  optional: z.boolean().optional().default(false), // 과거 호환용
   substitution: z.string().optional(),
-  // ✅ 새로 추가: 재료 타입
+  // 재료 타입 라벨(서버/클라이언트 보정과 함께 사용)
   type: z.enum(['필수', '선택', '대체']).optional().default('필수'),
 })
 
@@ -29,7 +28,8 @@ export const RecipeSchema = z.object({
   difficulty: z.enum(['초급', '중급', '고급']).optional().default('초급'),
   ingredients: z.array(IngredientSchema),
   steps: z.array(StepSchema).min(1),
-  nutrition: NutritionSchema.optional().default({}),
+  // ✅ 기본값 제거: optional 만 유지 (Vercel 빌드 에러 원인 해결)
+  nutrition: NutritionSchema.optional(),
   tips: z.array(z.string()).optional().default([]),
   warnings: z.array(z.string()).optional().default([]),
 })
@@ -56,6 +56,10 @@ export const DishInputSchema = z.object({
   diets: z.array(z.string()).default([]),
 })
 
-export const AnyInputSchema = z.discriminatedUnion('mode', [PantryInputSchema, DishInputSchema])
+export const AnyInputSchema = z.discriminatedUnion('mode', [
+  PantryInputSchema,
+  DishInputSchema,
+])
+
 export type AnyInput = z.infer<typeof AnyInputSchema>
 
