@@ -12,7 +12,8 @@ export const IngredientSchema = z.object({
 export const StepSchema = z.object({
   order: z.number().int().positive(),
   instruction: z.string(),
-  timerSec: z.number().int().positive().optional(),
+  // ⬇️ 0초가 들어와도 파싱 통과 → 이후 서버에서 보정/제거
+  timerSec: z.number().int().nonnegative().optional(),
 })
 
 export const NutritionSchema = z.object({
@@ -28,7 +29,7 @@ export const RecipeSchema = z.object({
   difficulty: z.enum(['초급', '중급', '고급']).optional().default('초급'),
   ingredients: z.array(IngredientSchema),
   steps: z.array(StepSchema).min(1),
-  // ✅ 기본값 제거: optional 만 유지 (Vercel 빌드 에러 원인 해결)
+  // Vercel 빌드 에러 회피: default 제거, optional만
   nutrition: NutritionSchema.optional(),
   tips: z.array(z.string()).optional().default([]),
   warnings: z.array(z.string()).optional().default([]),
@@ -62,4 +63,3 @@ export const AnyInputSchema = z.discriminatedUnion('mode', [
 ])
 
 export type AnyInput = z.infer<typeof AnyInputSchema>
-
