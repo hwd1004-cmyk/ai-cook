@@ -13,9 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="mx-auto max-w-4xl px-4">
           {/* Topbar */}
           <header className="sticky top-0 z-40 backdrop-blur bg-white/80 border-b border-neutral-200/60 shadow-sm">
-            <div className="max-w-4xl mx-auto flex items-center justify-between px-3 py-4 md:py-5">
+            <div className="max-w-4xl mx-auto flex items-center justify-between px-3 py-4 md:py-5 gap-y-2 flex-wrap">
               <div className="flex items-center gap-4">
-                {/* ✅ 로고 (셰프봇 캐릭터) */}
+                {/* 로고 */}
                 <div className="h-14 w-14 md:h-16 md:w-16 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center">
                   <img
                     src="/chefbot.jpeg"
@@ -24,18 +24,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   />
                 </div>
 
-                {/* 텍스트 */}
+                {/* 타이틀 & 서브텍스트 */}
                 <div className="leading-tight">
                   <h1 className="text-xl md:text-2xl font-bold text-emerald-800">AI 요리비서</h1>
                   <p className="text-sm md:text-base text-neutral-600">
                     재료 또는 요리명으로 레시피를 찾아보세요
                   </p>
+
+                  {/* ✅ 모바일 전용 배지 (sm 미만에서 표시) */}
+                  <div className="sm:hidden mt-2">
+                    <span className="inline-block px-2.5 py-1 rounded-full border bg-white shadow-sm text-[11px] text-neutral-700">
+                      생성형AI기반 비즈니스 - <span className="text-emerald-700 font-semibold">Group 1</span>
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* ✅ 우측 문구 변경 */}
+              {/* ✅ 데스크톱 전용 배지 (sm 이상에서 표시) */}
               <div className="hidden sm:flex items-center gap-2 text-[11px] md:text-xs text-neutral-600 font-medium tracking-tight">
-                <span className="px-3 py-1 rounded-full border bg-white shadow-sm">
+                <span className="px-3 py-1 rounded-full border bg-white shadow-sm whitespace-nowrap">
                   생성형AI기반 비즈니스 - <span className="text-emerald-700 font-semibold">Group 1</span>
                 </span>
               </div>
