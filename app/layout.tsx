@@ -9,14 +9,23 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body className="min-h-screen bg-gradient-to-b from-emerald-50/60 via-white to-white text-neutral-900 antialiased">
+      {/* ✅ text-neutral-900 제거, dark 그라디언트 추가 */}
+      <body className="
+        min-h-screen antialiased
+        bg-gradient-to-b from-emerald-50/60 via-white to-white
+        dark:from-neutral-900 dark:via-neutral-950 dark:to-black
+      ">
         <div className="mx-auto max-w-4xl px-4">
           {/* Topbar */}
-          <header className="sticky top-0 z-40 backdrop-blur bg-white/80 border-b border-neutral-200/60 shadow-sm">
+          <header className="
+            sticky top-0 z-40 backdrop-blur
+            bg-white/80 border-b border-neutral-200/60 shadow-sm
+            dark:bg-neutral-900/70 dark:border-neutral-800
+          ">
             <div className="max-w-4xl mx-auto flex items-center justify-between px-3 py-4 md:py-5 gap-y-2 flex-wrap">
               <div className="flex items-center gap-4">
                 {/* 로고 */}
-                <div className="h-14 w-14 md:h-16 md:w-16 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center">
+                <div className="h-14 w-14 md:h-16 md:w-16 rounded-full overflow-hidden bg-emerald-50 dark:bg-neutral-800 flex items-center justify-center">
                   <img
                     src="/chefbot.jpeg"
                     alt="AI 요리비서 로고"
@@ -26,24 +35,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
                 {/* 타이틀 & 서브텍스트 */}
                 <div className="leading-tight">
-                  <h1 className="text-xl md:text-2xl font-bold text-emerald-800">AI 요리비서</h1>
-                  <p className="text-sm md:text-base text-neutral-600">
+                  <h1 className="text-xl md:text-2xl font-bold text-emerald-800 dark:text-emerald-300">
+                    AI 요리비서
+                  </h1>
+                  <p className="text-sm md:text-base text-neutral-600 dark:text-neutral-300">
                     재료 또는 요리명으로 레시피를 찾아보세요
                   </p>
 
-                  {/* ✅ 모바일 전용 배지 (sm 미만에서 표시) */}
+                  {/* 모바일 전용 배지 */}
                   <div className="sm:hidden mt-2">
-                    <span className="inline-block px-2.5 py-1 rounded-full border bg-white shadow-sm text-[11px] text-neutral-700">
-                      생성형AI기반 비즈니스 - <span className="text-emerald-700 font-semibold">Group 1</span>
+                    <span className="inline-block px-2.5 py-1 rounded-full border bg-white shadow-sm text-[11px] text-neutral-700
+                                      dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-300">
+                      생성형AI기반 비즈니스 - <span className="text-emerald-700 dark:text-emerald-300 font-semibold">Group 1</span>
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* ✅ 데스크톱 전용 배지 (sm 이상에서 표시) */}
-              <div className="hidden sm:flex items-center gap-2 text-[11px] md:text-xs text-neutral-600 font-medium tracking-tight">
-                <span className="px-3 py-1 rounded-full border bg-white shadow-sm whitespace-nowrap">
-                  생성형AI기반 비즈니스 - <span className="text-emerald-700 font-semibold">Group 1</span>
+              {/* 데스크톱 전용 배지 */}
+              <div className="hidden sm:flex items-center gap-2 text-[11px] md:text-xs text-neutral-600 dark:text-neutral-300 font-medium tracking-tight">
+                <span className="px-3 py-1 rounded-full border bg-white shadow-sm whitespace-nowrap
+                                 dark:bg-neutral-800 dark:border-neutral-700">
+                  생성형AI기반 비즈니스 - <span className="text-emerald-700 dark:text-emerald-300 font-semibold">Group 1</span>
                 </span>
               </div>
             </div>
@@ -55,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
 
           {/* Footer */}
-          <footer className="py-8 text-center text-xs text-neutral-500">
+          <footer className="py-8 text-center text-xs text-neutral-500 dark:text-neutral-400">
             © {new Date().getFullYear()} AI-Cook · 집밥을 더 쉽고 즐겁게
           </footer>
         </div>
