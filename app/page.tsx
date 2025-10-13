@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import type { Recipe } from '@/lib/schema'
 
 type Mode = 'pantry' | 'dish'
@@ -115,7 +115,7 @@ export default function HomePage() {
     }
   }
 
-  // 제출
+  // 제출 (Enter키로도 동작하도록 유지)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (mode === 'dish') {
@@ -337,18 +337,8 @@ export default function HomePage() {
                 ? (suggesting ? <>추천 불러오는 중 <LoadingDots /></> : '추천 불러오기')
                 : (loading ? <>생성 중 <LoadingDots /></> : '레시피 생성')}
             </button>
-            {mode === 'pantry' && (
-              <button
-                type="submit"
-                className="px-4 py-3 rounded-xl border bg-white transition hover:shadow-sm active:scale-[0.99]
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-              >
-                제출
-              </button>
-            )}
           </div>
 
-          {/* 메시지 */}
           {(error || success) && (
             <div className={`mt-1 text-sm rounded-xl px-3 py-2 border ${error ? 'border-red-200 text-red-700 bg-red-50' : 'border-emerald-200 text-emerald-800 bg-emerald-50'}`}>
               {error || success}
@@ -557,12 +547,11 @@ function RecipeView({ recipe, onShare, onReset }: { recipe: Recipe; onShare: () 
   )
 }
 
-// 타이머: 팝업(alert) 제거 → 카드 내부에서 상태/진행률로 피드백
+// 타이머: 카드 내부에서 상태/진행률로 피드백
 function StepTimer({ seconds }: { seconds: number }) {
   const [remain, setRemain] = useState<number | null>(null)
   const [status, setStatus] = useState<'idle'|'running'|'paused'|'done'>('idle')
 
-  // mm:ss 포맷
   const fmt = (n: number) => {
     const m = Math.floor(n / 60).toString().padStart(2,'0')
     const s = Math.floor(n % 60).toString().padStart(2,'0')
