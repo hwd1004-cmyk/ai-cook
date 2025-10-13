@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import type { Recipe } from '@/lib/schema'
 
 type Mode = 'pantry' | 'dish'
@@ -11,15 +11,11 @@ const splitList = (s: string) =>
 
 /* =========================================
    재료 라벨 보정기 (프론트 추론)
-   서버가 type을 안 보낼 때 안전하게 표시
 ========================================= */
-
-// 기본적으로 집에 있을 법한 조미료/기름/향신료/물 등
 const BASIC_OPTIONALS = new Set([
   '소금','후추','식용유','올리브유','카놀라유','버터','마가린',
   '참기름','식초','설탕','꿀','간장','고춧가루','고추장','된장',
-  '다진마늘','마늘','물','전분','밀가루','옥수수전분',
-  '파','대파','쪽파'
+  '다진마늘','마늘','물','전분','밀가루','옥수수전분','파','대파','쪽파'
 ])
 
 type AnyIng = {
@@ -29,7 +25,6 @@ type AnyIng = {
   substitution?: string
 } & Record<string, any>
 
-/** 서버 type > optional > substitution > 기본조미료 > 필수 */
 function inferType(it: AnyIng): '필수'|'선택'|'대체' {
   const t = (it as any).type
   if (t === '필수' || t === '선택' || t === '대체') return t
@@ -42,10 +37,27 @@ function inferType(it: AnyIng): '필수'|'선택'|'대체' {
   return '필수'
 }
 
+/* =========================================
+   ✨ UI 보조 컴포넌트
+========================================= */
+function LoadingDots() {
+  return (
+    <span className="inline-flex gap-1 align-middle">
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.2s]" />
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.1s]" />
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-current animate-bounce" />
+    </span>
+  )
+}
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-neutral-200/70 ${className}`} />
+}
+
 export default function HomePage() {
   const [mode, setMode] = useState<Mode>('pantry')
 
-  // 입력 상태
+  // 입력 상태 (초기값은 데모용)
   const [ingredientsText, setIngredientsText] = useState('계란 2개, 양파 1/2, 남은 김치 조금')
   const [dishName, setDishName] = useState('김치볶음밥')
   const [servings, setServings] = useState(2)
@@ -55,31 +67,30 @@ export default function HomePage() {
   const [dietsText, setDietsText] = useState('')
 
   // 상태
-  const [loading, setLoading] = useState(false)       // 레시피 생성 로딩
-  const [suggesting, setSuggesting] = useState(false) // 추천 로딩
+  const [loading, setLoading] = useState(false)
+  const [suggesting, setSuggesting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
-  // 탭별 레시피 저장 → 탭 이동해도 유지
+  // 탭별 레시피 저장
   const [pantryRecipe, setPantryRecipe] = useState<Recipe | null>(null)
   const [dishRecipe, setDishRecipe] = useState<Recipe | null>(null)
   const currentRecipe = mode === 'pantry' ? pantryRecipe : dishRecipe
 
-  // 추천 목록 + 클릭 피드백
+  // 추천 상태
   const [suggests, setSuggests] = useState<Suggest[]>([])
   const [clickedIndex, setClickedIndex] = useState<number | null>(null)
 
-  // 탭 전환: 레시피는 유지, 에러/추천만 정리
+  // 탭 전환
   function switchMode(next: Mode) {
     setMode(next)
-    setError(null)
-    setSuggests([])
-    setClickedIndex(null)
+    setError(null); setSuccess(null)
+    setSuggests([]); setClickedIndex(null)
   }
 
-  // 공통 레시피 생성: storeAs 로 저장 위치 고정 가능
-  async function generateRecipe(body: any, storeAs: 'pantry' | 'dish' = (body.mode as 'pantry' | 'dish')) {
-    setLoading(true)
-    setError(null)
+  // 공통 레시피 생성
+  async function generateRecipe(body: any, storeAs: 'pantry' | 'dish' = (body.mode as 'pantry'|'dish')) {
+    setLoading(true); setError(null); setSuccess(null)
     try {
       const res = await fetch('/api/recipe', {
         method: 'POST',
@@ -96,6 +107,7 @@ export default function HomePage() {
         setDishRecipe(data)
         try { localStorage.setItem('ai-cook:last:dish', JSON.stringify(data)) } catch {}
       }
+      setSuccess('레시피를 가져왔어요!')
     } catch (err: any) {
       setError(err?.message || '요청 실패')
     } finally {
@@ -103,7 +115,7 @@ export default function HomePage() {
     }
   }
 
-  // 폼 제출: dish는 바로 생성, pantry는 추천 먼저 띄움(안전망)
+  // 제출
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (mode === 'dish') {
@@ -121,11 +133,10 @@ export default function HomePage() {
     }
   }
 
-  // 메인 버튼: pantry=추천 호출 / dish=레시피 생성
+  // 메인 버튼
   async function handleMainButton() {
-    if (mode === 'pantry') {
-      await handleSuggest()
-    } else {
+    if (mode === 'pantry') await handleSuggest()
+    else {
       await generateRecipe({
         mode: 'dish',
         dishName: dishName.trim(),
@@ -138,12 +149,10 @@ export default function HomePage() {
     }
   }
 
-  // 추천 호출 (pantry 전용 UX)
+  // 추천 호출
   async function handleSuggest() {
-    setSuggests([])
-    setClickedIndex(null)
-    setError(null)
-    setSuggesting(true)
+    setSuggests([]); setClickedIndex(null)
+    setError(null); setSuccess(null); setSuggesting(true)
     try {
       const body = {
         mode: 'pantry' as const,
@@ -164,6 +173,7 @@ export default function HomePage() {
       if (!res.ok) throw new Error(data?.error || '추천 실패')
       const list = Array.isArray(data?.suggestions) ? data.suggestions : []
       setSuggests(list.slice(0, 5))
+      setSuccess('가능한 메뉴를 찾았어요!')
     } catch (err: any) {
       setError(err?.message || '추천 실패')
     } finally {
@@ -171,32 +181,29 @@ export default function HomePage() {
     }
   }
 
-  // 추천 클릭 → 탭은 그대로(재료), 자동 생성하되 결과는 pantry 쪽에 저장
+  // 추천 클릭→ dish로 생성하지만 pantry 슬롯에 기록
   async function chooseSuggestion(idx: number) {
     const item = suggests[idx]
     if (!item) return
     setClickedIndex(idx)
-
     setTimeout(async () => {
-      setDishName(item.nameKo) // 기록용
+      setDishName(item.nameKo)
       await generateRecipe({
-        mode: 'dish',                 // 요리명 기반으로 생성
+        mode: 'dish',
         dishName: item.nameKo,
         servings,
         timeLimit,
         allergies: splitList(allergiesText),
         preferences: splitList(prefsText),
         diets: splitList(dietsText),
-      }, 'pantry')                    // 결과는 pantry 슬롯에 저장/표시
+      }, 'pantry')
     }, 150)
   }
 
   // 공유
   function handleShare(recipe: Recipe | null) {
     if (!recipe) return
-    const text =
-      '오늘의 레시피: ' + recipe.title +
-      ' (' + String(recipe.cookingTimeMin) + '분, 난이도 ' + String(recipe.difficulty) + ')'
+    const text = `오늘의 레시피: ${recipe.title} (${String(recipe.cookingTimeMin)}분, 난이도 ${String(recipe.difficulty)})`
     if (navigator.share) {
       navigator.share({ title: 'AI 요리비서', text, url: location.href }).catch(() => {})
     } else {
@@ -205,261 +212,363 @@ export default function HomePage() {
   }
 
   return (
-    <main className="space-y-6">
-      {/* 탭 */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => switchMode('pantry')}
-          className={'px-3 py-2 rounded-lg border ' + (mode === 'pantry' ? 'bg-black text-white' : 'bg-white')}
-          type="button"
-        >
-          재료로 찾기
-        </button>
-        <button
-          onClick={() => switchMode('dish')}
-          className={'px-3 py-2 rounded-lg border ' + (mode === 'dish' ? 'bg-black text-white' : 'bg-white')}
-          type="button"
-        >
-          요리명으로 찾기
-        </button>
-      </div>
-
-      {/* 입력 폼 */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {mode === 'pantry' ? (
-          <div>
-            <label className="block text-sm font-medium mb-1">냉장고 재료 (쉼표 또는 줄바꿈으로 구분)</label>
-            <textarea
-              value={ingredientsText}
-              onChange={e => setIngredientsText(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border p-2"
-              placeholder="예) 달걀, 양파, 김치"
-            />
-          </div>
-        ) : (
-          <div>
-            <label className="block text-sm font-medium mb-1">요리명</label>
-            <input
-              value={dishName}
-              onChange={e => setDishName(e.target.value)}
-              className="w-full rounded-lg border p-2"
-              placeholder="예) 부리또, 비빔밥"
-            />
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">인분</label>
-            <input
-              type="number"
-              min={1}
-              value={servings}
-              onChange={e => setServings(parseInt(e.target.value || '1'))}
-              className="w-full rounded-lg border p-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">최대 조리시간(분)</label>
-            <input
-              type="number"
-              min={5}
-              value={timeLimit}
-              onChange={e => setTimeLimit(parseInt(e.target.value || '5'))}
-              className="w-full rounded-lg border p-2"
-            />
-          </div>
+    <div className="space-y-6">
+      {/* Hero */}
+      <section className="rounded-2xl border bg-white p-5 md:p-6 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-xl md:text-2xl font-semibold">
+            오늘 냉장고로 만든 <span className="text-emerald-700">맞춤 레시피</span>
+          </h2>
+          <p className="text-sm text-neutral-600">
+            재료로 찾거나, 요리명으로 바로 생성해보세요. 추천 → 선택 → 단계별 타이머까지 한 번에!
+          </p>
         </div>
 
-        <div className="grid gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">알레르기 (쉼표/줄바꿈)</label>
-            <input
-              value={allergiesText}
-              onChange={e => setAllergiesText(e.target.value)}
-              className="w-full rounded-lg border p-2"
-              placeholder="예) 땅콩, 갑각류"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">취향 (예: 매운맛 선호, 아이친화)</label>
-            <input
-              value={prefsText}
-              onChange={e => setPrefsText(e.target.value)}
-              className="w-full rounded-lg border p-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">식단 제한 (예: 다이어트, 채식)</label>
-            <input
-              value={dietsText}
-              onChange={e => setDietsText(e.target.value)}
-              className="w-full rounded-lg border p-2"
-            />
-          </div>
+        {/* Tabs */}
+        <div className="mt-4 inline-flex rounded-xl border bg-neutral-50 p-1">
+          <button
+            onClick={() => switchMode('pantry')}
+            className={`px-3 py-1.5 text-sm rounded-lg transition hover:shadow-sm active:scale-[0.99]
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300
+                        ${mode==='pantry' ? 'bg-white shadow border' : 'text-neutral-600'}`}
+            type="button"
+          >
+            재료로 찾기
+          </button>
+          <button
+            onClick={() => switchMode('dish')}
+            className={`px-3 py-1.5 text-sm rounded-lg transition hover:shadow-sm active:scale-[0.99]
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300
+                        ${mode==='dish' ? 'bg-white shadow border' : 'text-neutral-600'}`}
+            type="button"
+          >
+            요리명으로 찾기
+          </button>
         </div>
 
-        {/* 메인 버튼: pantry=추천 호출 / dish=레시피 생성 */}
-        <button
-          type="button"
-          onClick={handleMainButton}
-          disabled={loading || suggesting}
-          className="w-full py-3 rounded-lg bg-emerald-600 text-white font-semibold disabled:opacity-60"
-        >
-          {mode === 'pantry'
-            ? (suggesting ? '추천 불러오는 중…' : 'AI 레시피 찾기')
-            : (loading ? '생성 중…' : 'AI 레시피 찾기')}
-        </button>
-      </form>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
+          {mode === 'pantry' ? (
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">냉장고 재료 <span className="text-neutral-500">(쉼표/줄바꿈)</span></label>
+              <textarea
+                value={ingredientsText}
+                onChange={e => setIngredientsText(e.target.value)}
+                rows={3}
+                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                placeholder="예) 달걀, 양파, 김치"
+              />
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">요리명</label>
+              <input
+                value={dishName}
+                onChange={e => setDishName(e.target.value)}
+                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                placeholder="예) 비빔밥, 부리또"
+              />
+            </div>
+          )}
 
-      {/* 오류 */}
-      {error && <div className="p-3 border border-red-200 text-red-700 rounded">{error}</div>}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">인분</label>
+              <input
+                type="number"
+                min={1}
+                value={servings}
+                onChange={e => setServings(parseInt(e.target.value || '1'))}
+                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">최대 조리시간(분)</label>
+              <input
+                type="number"
+                min={5}
+                value={timeLimit}
+                onChange={e => setTimeLimit(parseInt(e.target.value || '5'))}
+                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              />
+            </div>
+          </div>
 
-      {/* 추천 목록 (pantry일 때만 노출) */}
-      {mode === 'pantry' && suggests.length > 0 && (
-        <div className="p-3 border rounded space-y-2">
-          <h3 className="font-semibold">추천 메뉴 (클릭하면 자동으로 레시피 생성)</h3>
-          <ul className="space-y-2">
-            {suggests.map((s, i) => (
-              <li
-                key={i}
-                className={
-                  'flex items-center justify-between p-2 border rounded transition ' +
-                  (clickedIndex === i ? 'scale-95 ring-2 ring-emerald-500' : 'hover:bg-neutral-50')
-                }
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">알레르기</label>
+              <input
+                value={allergiesText}
+                onChange={e => setAllergiesText(e.target.value)}
+                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                placeholder="예) 땅콩, 갑각류"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">취향</label>
+              <input
+                value={prefsText}
+                onChange={e => setPrefsText(e.target.value)}
+                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                placeholder="예) 아이친화, 덜 맵게"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">식단 제한</label>
+              <input
+                value={dietsText}
+                onChange={e => setDietsText(e.target.value)}
+                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                placeholder="예) 다이어트, 채식"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleMainButton}
+              disabled={loading || suggesting}
+              className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-semibold disabled:opacity-60
+                         transition active:scale-[0.99] hover:shadow-sm
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+            >
+              {mode === 'pantry'
+                ? (suggesting ? <>추천 불러오는 중 <LoadingDots /></> : '추천 불러오기')
+                : (loading ? <>생성 중 <LoadingDots /></> : '레시피 생성')}
+            </button>
+            {mode === 'pantry' && (
+              <button
+                type="submit"
+                className="px-4 py-3 rounded-xl border bg-white transition hover:shadow-sm active:scale-[0.99]
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
               >
-                <div>
-                  <div className="font-medium">{s.nameKo}</div>
-                  <div className="text-xs text-neutral-600">{s.nameEn}</div>
+                제출
+              </button>
+            )}
+          </div>
+
+          {/* 메시지 */}
+          {(error || success) && (
+            <div className={`mt-1 text-sm rounded-xl px-3 py-2 border ${error ? 'border-red-200 text-red-700 bg-red-50' : 'border-emerald-200 text-emerald-800 bg-emerald-50'}`}>
+              {error || success}
+            </div>
+          )}
+        </form>
+      </section>
+
+      {/* 스켈레톤 (추천 로딩 중) */}
+      {mode === 'pantry' && suggesting && (
+        <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
+          <div className="grid sm:grid-cols-2 gap-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="p-3 rounded-xl border bg-white">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-3 w-1/2" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                  <Skeleton className="h-6 w-14" />
                 </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 추천 메뉴 리스트 */}
+      {mode === 'pantry' && suggests.length > 0 && (
+        <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">추천 메뉴</h3>
+            <span className="text-xs text-neutral-500">클릭하면 자동으로 레시피 생성</span>
+          </div>
+          <ul className="grid sm:grid-cols-2 gap-3">
+            {suggests.map((s, i) => (
+              <li key={i}>
                 <button
                   onClick={() => chooseSuggestion(i)}
-                  className="px-3 py-1 rounded border"
+                  className={
+                    'w-full text-left p-3 rounded-xl border bg-white transition ' +
+                    (clickedIndex === i
+                      ? 'ring-2 ring-emerald-500'
+                      : 'hover:bg-neutral-50 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300')
+                  }
                 >
-                  이 메뉴로
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-100 grid place-content-center">🍳</div>
+                    <div className="flex-1">
+                      <div className="font-medium">{s.nameKo}</div>
+                      <div className="text-xs text-neutral-600">{s.nameEn}</div>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full border bg-white">이 메뉴로</span>
+                  </div>
                 </button>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
 
-      {/* 현재 탭 레시피만 표시 */}
-      {currentRecipe && (
-        <RecipeView
-          key={mode + ':' + (currentRecipe?.title ?? '')}
-          recipe={currentRecipe}
-          onShare={() => handleShare(currentRecipe)}
-          onReset={() => {
-            if (mode === 'pantry') setPantryRecipe(null)
-            else setDishRecipe(null)
-          }}
-        />
-      )}
-    </main>
+      {/* 결과 카드 */}
+      {currentRecipe && <RecipeView
+        key={mode + ':' + (currentRecipe?.title ?? '')}
+        recipe={currentRecipe}
+        onShare={() => handleShare(currentRecipe)}
+        onReset={() => {
+          if (mode === 'pantry') setPantryRecipe(null)
+          else setDishRecipe(null)
+        }}
+      />}
+    </div>
   )
 }
 
 function RecipeView({ recipe, onShare, onReset }: { recipe: Recipe; onShare: () => void; onReset: () => void }) {
-  // 현재 단계 하이라이트 + 네비게이션
   const [currentStep, setCurrentStep] = useState(0)
   const total = recipe.steps.length
 
   function prevStep() { setCurrentStep(s => Math.max(0, s - 1)) }
   function nextStep() { setCurrentStep(s => Math.min(total - 1, s + 1)) }
 
+  // 좌측 정보 / 우측 단계로 2단 레이아웃
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">{recipe.title}</h2>
-          <p className="text-sm text-neutral-600">
-            {'조리시간 ' + (recipe.cookingTimeMin ?? 0) + '분 · 난이도 ' + recipe.difficulty}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={onShare} className="px-3 py-2 rounded border">공유</button>
-          <button onClick={() => window.print()} className="px-3 py-2 rounded border">인쇄</button>
-          <button onClick={onReset} className="px-3 py-2 rounded border">다시 찾기</button>
-        </div>
-      </div>
+    <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Left: Info */}
+        <div className="md:w-5/12 w-full space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold">{recipe.title}</h2>
+            <p className="text-sm text-neutral-600">
+              조리시간 {recipe.cookingTimeMin ?? 0}분 · 난이도 {recipe.difficulty}
+            </p>
+          </div>
 
-      {/* 재료: inferType로 라벨 보정 */}
-      <div>
-        <h3 className="font-semibold mb-2">재료</h3>
-        <ul className="space-y-2">
-          {recipe.ingredients.map((it, idx) => {
-            const t = inferType(it as any)
-            const badgeClass =
-              t === '필수'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : t === '대체'
-                ? 'bg-amber-50 border-amber-200 text-amber-800'
-                : 'bg-neutral-50 border-neutral-200 text-neutral-800'
-            return (
-              <li key={idx} className="flex items-start gap-2">
-                <span className={`inline-flex items-center px-2 py-0.5 text-xs rounded border ${badgeClass}`}>
-                  {t}
-                </span>
-                <div className="leading-tight">
-                  <div className="font-medium">
-                    {it.name}{it.qty ? ` — ${it.qty}` : ''}
-                  </div>
-                  {it.substitution && (
-                    <div className="text-xs text-neutral-600">대체: {it.substitution}</div>
-                  )}
-                </div>
+          {/* Ingredients */}
+          <div>
+            <h3 className="font-semibold mb-2">재료</h3>
+            <ul className="space-y-2">
+              {recipe.ingredients.map((it, idx) => {
+                const t = inferType(it as any)
+                const badgeClass =
+                  t === '필수'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : t === '대체'
+                    ? 'bg-amber-50 border-amber-200 text-amber-800'
+                    : 'bg-neutral-50 border-neutral-200 text-neutral-800'
+                return (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 text-xs rounded border ${badgeClass}`}>{t}</span>
+                    <div className="leading-tight">
+                      <div className="font-medium">
+                        {it.name}{it.qty ? ` — ${it.qty}` : ''}
+                      </div>
+                      {it.substitution && (
+                        <div className="text-xs text-neutral-600">대체: {it.substitution}</div>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onShare}
+              className="px-3 py-2 rounded-xl border bg-white transition hover:shadow-sm active:scale-[0.99]
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+            >
+              공유
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-3 py-2 rounded-xl border bg-white transition hover:shadow-sm active:scale-[0.99]
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+            >
+              인쇄
+            </button>
+            <button
+              onClick={onReset}
+              className="px-3 py-2 rounded-xl border bg-white transition hover:shadow-sm active:scale-[0.99]
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+            >
+              다시 찾기
+            </button>
+          </div>
+
+          {/* Warnings */}
+          {(recipe.warnings?.length ?? 0) > 0 && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+              <h4 className="font-semibold mb-1">안전 주의</h4>
+              <ul className="list-disc ml-6 text-sm space-y-1">
+                {recipe.warnings!.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Steps */}
+        <div className="md:w-7/12 w-full">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">조리 단계</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={prevStep}
+                className="px-3 py-1.5 border rounded-lg transition hover:shadow-sm active:scale-[0.99]
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                disabled={currentStep === 0}
+              >
+                이전
+              </button>
+              <span className="text-sm self-center">{currentStep + 1} / {total}</span>
+              <button
+                onClick={nextStep}
+                className="px-3 py-1.5 border rounded-lg transition hover:shadow-sm active:scale-[0.99]
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                disabled={currentStep === total - 1}
+              >
+                다음
+              </button>
+            </div>
+          </div>
+
+          <ol className="space-y-3">
+            {recipe.steps.map((s, i) => (
+              <li
+                key={s.order}
+                className={
+                  'space-y-2 p-3 rounded-xl border transition ' +
+                  (i === currentStep ? 'border-emerald-300 bg-emerald-50/50' : 'border-neutral-200 bg-white')
+                }
+              >
+                <p className="leading-relaxed">{s.instruction}</p>
+                {typeof s.timerSec === 'number' && s.timerSec > 0 && (
+                  <StepTimer seconds={s.timerSec} />
+                )}
               </li>
-            )
-          })}
-        </ul>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">조리 단계</h3>
-        <div className="flex gap-2">
-          <button onClick={prevStep} className="px-3 py-1 border rounded" disabled={currentStep === 0}>이전 단계</button>
-          <span className="text-sm self-center">{currentStep + 1} / {total}</span>
-          <button onClick={nextStep} className="px-3 py-1 border rounded" disabled={currentStep === total - 1}>다음 단계</button>
+            ))}
+          </ol>
         </div>
       </div>
-
-      <ol className="list-decimal ml-6 space-y-2">
-        {recipe.steps.map((s, i) => (
-          <li
-            key={s.order}
-            className={
-              'space-y-1 p-2 rounded border ' +
-              (i === currentStep ? 'border-emerald-400 bg-emerald-50/40' : 'border-transparent')
-            }
-          >
-            <p>{s.instruction}</p>
-            {typeof s.timerSec === 'number' && s.timerSec > 0 && (
-              <StepTimer seconds={s.timerSec} />
-            )}
-          </li>
-        ))}
-      </ol>
-
-      {(recipe.warnings?.length ?? 0) > 0 && (
-        <div className="p-3 rounded bg-amber-50 border border-amber-200">
-          <h4 className="font-semibold mb-1">안전 주의</h4>
-          <ul className="list-disc ml-6 text-sm space-y-1">
-            {recipe.warnings!.map((w, i) => <li key={i}>{w}</li>)}
-          </ul>
-        </div>
-      )}
     </section>
   )
 }
 
-// 타이머: 시작/일시정지/재개/초기화 + 진행률 (🔕 소리 없음)
+// 타이머: 팝업(alert) 제거 → 카드 내부에서 상태/진행률로 피드백
 function StepTimer({ seconds }: { seconds: number }) {
   const [remain, setRemain] = useState<number | null>(null)
   const [status, setStatus] = useState<'idle'|'running'|'paused'|'done'>('idle')
 
-  // tick
+  // mm:ss 포맷
+  const fmt = (n: number) => {
+    const m = Math.floor(n / 60).toString().padStart(2,'0')
+    const s = Math.floor(n % 60).toString().padStart(2,'0')
+    return `${m}:${s}`
+  }
+
   useEffect(() => {
     if (status !== 'running' || remain === null || remain <= 0) return
     const id = setInterval(() => {
@@ -468,7 +577,6 @@ function StepTimer({ seconds }: { seconds: number }) {
         if (next <= 0) {
           clearInterval(id)
           setStatus('done')
-          alert('타이머 종료!')
           return 0
         }
         return next
@@ -477,7 +585,6 @@ function StepTimer({ seconds }: { seconds: number }) {
     return () => clearInterval(id)
   }, [status, remain])
 
-  // controls
   function start() {
     if (status === 'idle' || status === 'done') {
       setRemain(seconds)
@@ -501,35 +608,32 @@ function StepTimer({ seconds }: { seconds: number }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        {status === 'idle' && <button onClick={start} className="px-2 py-1 text-sm border rounded">시작</button>}
+      <div className="flex items-center gap-2 text-sm">
+        {status === 'idle' && <button onClick={start} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">시작</button>}
         {status === 'running' && (
           <>
-            <button onClick={pause} className="px-2 py-1 text-sm border rounded">일시정지</button>
-            <button onClick={reset} className="px-2 py-1 text-sm border rounded">초기화</button>
+            <button onClick={pause} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">일시정지</button>
+            <button onClick={reset} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">초기화</button>
           </>
         )}
         {status === 'paused' && (
           <>
-            <button onClick={resume} className="px-2 py-1 text-sm border rounded">재개</button>
-            <button onClick={reset} className="px-2 py-1 text-sm border rounded">초기화</button>
+            <button onClick={resume} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">재개</button>
+            <button onClick={reset} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">초기화</button>
           </>
         )}
         {status === 'done' && (
           <>
-            <button onClick={start} className="px-2 py-1 text-sm border rounded">다시 시작</button>
-            <button onClick={reset} className="px-2 py-1 text-sm border rounded">초기화</button>
+            <span className="px-2 py-1 rounded-lg border bg-emerald-50 text-emerald-700">완료!</span>
+            <button onClick={start} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">다시 시작</button>
+            <button onClick={reset} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">초기화</button>
           </>
         )}
-        <span className="text-sm tabular-nums">남은시간: {left}s</span>
+        <span className="ml-auto font-mono tabular-nums">{fmt(left)}</span>
       </div>
 
-      {/* 진행률 바 */}
-      <div className="h-2 w-full bg-neutral-200 rounded">
-        <div
-          className="h-2 rounded bg-emerald-500 transition-all"
-          style={{ width: percent + '%' }}
-        />
+      <div className="h-2 w-full rounded bg-neutral-200 overflow-hidden">
+        <div className="h-2 rounded bg-emerald-500 transition-all" style={{ width: percent + '%' }} />
       </div>
     </div>
   )
