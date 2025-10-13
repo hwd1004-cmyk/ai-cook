@@ -102,7 +102,7 @@ export default function HomePage() {
 
       if (storeAs === 'pantry') {
         setPantryRecipe(data)
-        try { localStorage.setItem('ai-cook:last:pantry', JSON.stringify(data)) } catch {}
+        try { localStorage.setItem('ai-cook:last:panry', JSON.stringify(data)) } catch {}
       } else {
         setDishRecipe(data)
         try { localStorage.setItem('ai-cook:last:dish', JSON.stringify(data)) } catch {}
@@ -115,7 +115,7 @@ export default function HomePage() {
     }
   }
 
-  // 제출 (Enter키로도 동작하도록 유지)
+  // 제출 (Enter키로도 동작)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (mode === 'dish') {
@@ -214,10 +214,10 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <section className="rounded-2xl border bg-white p-5 md:p-6 shadow-sm">
+      <section className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h2 className="text-xl md:text-2xl font-semibold">
-            오늘 냉장고로 만든 <span className="text-emerald-700">맞춤 레시피</span>
+          <h2 className="text-xl md:text-2xl font-semibold text-emerald-800">
+            오늘 냉장고로 만든 <span className="text-amber-600">맞춤 레시피</span>
           </h2>
           <p className="text-sm text-neutral-600">
             재료로 찾거나, 요리명으로 바로 생성해보세요. 추천 → 선택 → 단계별 타이머까지 한 번에!
@@ -225,12 +225,12 @@ export default function HomePage() {
         </div>
 
         {/* Tabs */}
-        <div className="mt-4 inline-flex rounded-xl border bg-neutral-50 p-1">
+        <div className="mt-4 inline-flex rounded-xl border border-neutral-200 bg-white p-1">
           <button
             onClick={() => switchMode('pantry')}
             className={`px-3 py-1.5 text-sm rounded-lg transition hover:shadow-sm active:scale-[0.99]
                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300
-                        ${mode==='pantry' ? 'bg-white shadow border' : 'text-neutral-600'}`}
+                        ${mode==='pantry' ? 'bg-emerald-600 text-white shadow' : 'text-neutral-700 hover:bg-emerald-50'}`}
             type="button"
           >
             재료로 찾기
@@ -239,7 +239,7 @@ export default function HomePage() {
             onClick={() => switchMode('dish')}
             className={`px-3 py-1.5 text-sm rounded-lg transition hover:shadow-sm active:scale-[0.99]
                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300
-                        ${mode==='dish' ? 'bg-white shadow border' : 'text-neutral-600'}`}
+                        ${mode==='dish' ? 'bg-emerald-600 text-white shadow' : 'text-neutral-700 hover:bg-emerald-50'}`}
             type="button"
           >
             요리명으로 찾기
@@ -250,22 +250,22 @@ export default function HomePage() {
         <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
           {mode === 'pantry' ? (
             <div className="grid gap-2">
-              <label className="text-sm font-medium">냉장고 재료 <span className="text-neutral-500">(쉼표/줄바꿈)</span></label>
+              <label className="text-sm font-medium text-neutral-800">냉장고 재료 <span className="text-neutral-500">(쉼표/줄바꿈)</span></label>
               <textarea
                 value={ingredientsText}
                 onChange={e => setIngredientsText(e.target.value)}
                 rows={3}
-                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-xl border border-neutral-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300"
                 placeholder="예) 달걀, 양파, 김치"
               />
             </div>
           ) : (
             <div className="grid gap-2">
-              <label className="text-sm font-medium">요리명</label>
+              <label className="text-sm font-medium text-neutral-800">요리명</label>
               <input
                 value={dishName}
                 onChange={e => setDishName(e.target.value)}
-                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-xl border border-neutral-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300"
                 placeholder="예) 비빔밥, 부리또"
               />
             </div>
@@ -273,52 +273,52 @@ export default function HomePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <label className="text-sm font-medium">인분</label>
+              <label className="text-sm font-medium text-neutral-800">인분</label>
               <input
                 type="number"
                 min={1}
                 value={servings}
                 onChange={e => setServings(parseInt(e.target.value || '1'))}
-                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-xl border border-neutral-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300"
               />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">최대 조리시간(분)</label>
+              <label className="text-sm font-medium text-neutral-800">최대 조리시간(분)</label>
               <input
                 type="number"
                 min={5}
                 value={timeLimit}
                 onChange={e => setTimeLimit(parseInt(e.target.value || '5'))}
-                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-xl border border-neutral-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300"
               />
             </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
             <div className="grid gap-2">
-              <label className="text-sm font-medium">알레르기</label>
+              <label className="text-sm font-medium text-neutral-800">알레르기</label>
               <input
                 value={allergiesText}
                 onChange={e => setAllergiesText(e.target.value)}
-                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-xl border border-neutral-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300"
                 placeholder="예) 땅콩, 갑각류"
               />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">취향</label>
+              <label className="text-sm font-medium text-neutral-800">취향</label>
               <input
                 value={prefsText}
                 onChange={e => setPrefsText(e.target.value)}
-                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-xl border border-neutral-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300"
                 placeholder="예) 아이친화, 덜 맵게"
               />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">식단 제한</label>
+              <label className="text-sm font-medium text-neutral-800">식단 제한</label>
               <input
                 value={dietsText}
                 onChange={e => setDietsText(e.target.value)}
-                className="w-full rounded-xl border p-3 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                className="w-full rounded-xl border border-neutral-300 bg-white p-3 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300"
                 placeholder="예) 다이어트, 채식"
               />
             </div>
@@ -349,10 +349,10 @@ export default function HomePage() {
 
       {/* 스켈레톤 (추천 로딩 중) */}
       {mode === 'pantry' && suggesting && (
-        <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
+        <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5 shadow-sm">
           <div className="grid sm:grid-cols-2 gap-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="p-3 rounded-xl border bg-white">
+              <div key={i} className="p-3 rounded-xl border border-neutral-200 bg-white">
                 <div className="flex items-center gap-3">
                   <Skeleton className="h-10 w-10" />
                   <div className="flex-1 space-y-2">
@@ -369,7 +369,7 @@ export default function HomePage() {
 
       {/* 추천 메뉴 리스트 */}
       {mode === 'pantry' && suggests.length > 0 && (
-        <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
+        <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">추천 메뉴</h3>
             <span className="text-xs text-neutral-500">클릭하면 자동으로 레시피 생성</span>
@@ -424,12 +424,12 @@ function RecipeView({ recipe, onShare, onReset }: { recipe: Recipe; onShare: () 
 
   // 좌측 정보 / 우측 단계로 2단 레이아웃
   return (
-    <section className="rounded-2xl border bg-white p-4 md:p-5 shadow-sm">
+    <section className="rounded-2xl border border-neutral-200 bg-white p-4 md:p-5 shadow-sm">
       <div className="flex flex-col md:flex-row gap-6">
         {/* Left: Info */}
         <div className="md:w-5/12 w-full space-y-4">
           <div className="space-y-1">
-            <h2 className="text-xl font-bold">{recipe.title}</h2>
+            <h2 className="text-xl font-bold text-emerald-800">{recipe.title}</h2>
             <p className="text-sm text-neutral-600">
               조리시간 {recipe.cookingTimeMin ?? 0}분 · 난이도 {recipe.difficulty}
             </p>
@@ -507,7 +507,7 @@ function RecipeView({ recipe, onShare, onReset }: { recipe: Recipe; onShare: () 
             <div className="flex gap-2">
               <button
                 onClick={prevStep}
-                className="px-3 py-1.5 border rounded-lg transition hover:shadow-sm active:scale-[0.99]
+                className="px-3 py-1.5 border rounded-lg bg-white transition hover:shadow-sm active:scale-[0.99]
                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
                 disabled={currentStep === 0}
               >
@@ -516,7 +516,7 @@ function RecipeView({ recipe, onShare, onReset }: { recipe: Recipe; onShare: () 
               <span className="text-sm self-center">{currentStep + 1} / {total}</span>
               <button
                 onClick={nextStep}
-                className="px-3 py-1.5 border rounded-lg transition hover:shadow-sm active:scale-[0.99]
+                className="px-3 py-1.5 border rounded-lg bg-white transition hover:shadow-sm active:scale-[0.99]
                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
                 disabled={currentStep === total - 1}
               >
@@ -598,24 +598,24 @@ function StepTimer({ seconds }: { seconds: number }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-sm">
-        {status === 'idle' && <button onClick={start} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">시작</button>}
+        {status === 'idle' && <button onClick={start} className="px-2 py-1 rounded-lg border bg-white transition hover:shadow-sm active:scale-[0.99]">시작</button>}
         {status === 'running' && (
           <>
-            <button onClick={pause} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">일시정지</button>
-            <button onClick={reset} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">초기화</button>
+            <button onClick={pause} className="px-2 py-1 rounded-lg border bg-white transition hover:shadow-sm active:scale-[0.99]">일시정지</button>
+            <button onClick={reset} className="px-2 py-1 rounded-lg border bg-white transition hover:shadow-sm active:scale-[0.99]">초기화</button>
           </>
         )}
         {status === 'paused' && (
           <>
-            <button onClick={resume} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">재개</button>
-            <button onClick={reset} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">초기화</button>
+            <button onClick={resume} className="px-2 py-1 rounded-lg border bg-white transition hover:shadow-sm active:scale-[0.99]">재개</button>
+            <button onClick={reset} className="px-2 py-1 rounded-lg border bg-white transition hover:shadow-sm active:scale-[0.99]">초기화</button>
           </>
         )}
         {status === 'done' && (
           <>
             <span className="px-2 py-1 rounded-lg border bg-emerald-50 text-emerald-700">완료!</span>
-            <button onClick={start} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">다시 시작</button>
-            <button onClick={reset} className="px-2 py-1 rounded-lg border transition hover:shadow-sm active:scale-[0.99]">초기화</button>
+            <button onClick={start} className="px-2 py-1 rounded-lg border bg-white transition hover:shadow-sm active:scale-[0.99]">다시 시작</button>
+            <button onClick={reset} className="px-2 py-1 rounded-lg border bg-white transition hover:shadow-sm active:scale-[0.99]">초기화</button>
           </>
         )}
         <span className="ml-auto font-mono tabular-nums">{fmt(left)}</span>
