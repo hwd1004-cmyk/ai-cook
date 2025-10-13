@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="sticky top-0 z-40 backdrop-blur bg-white/80 border-b border-neutral-200/60 shadow-sm">
             <div className="max-w-4xl mx-auto flex items-center justify-between px-3 py-4 md:py-5">
               <div className="flex items-center gap-4">
-                {/* ✅ 로고 교체 (캐릭터) */}
+                {/* ✅ 로고 (셰프봇 캐릭터) */}
                 <div className="h-14 w-14 md:h-16 md:w-16 rounded-full overflow-hidden bg-emerald-50 flex items-center justify-center">
                   <img
                     src="/chefbot.jpeg"
@@ -23,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     className="object-contain h-full w-full"
                   />
                 </div>
+
                 {/* 텍스트 */}
                 <div className="leading-tight">
                   <h1 className="text-xl md:text-2xl font-bold text-emerald-800">AI 요리비서</h1>
@@ -32,9 +33,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
               </div>
 
-              {/* 우측 베타 배지 */}
-              <div className="hidden sm:flex items-center gap-2 text-xs text-neutral-600">
-                <span className="px-2 py-1 rounded-full border bg-white shadow-sm">베타</span>
+              {/* ✅ 우측 문구 변경 */}
+              <div className="hidden sm:flex items-center gap-2 text-[11px] md:text-xs text-neutral-600 font-medium tracking-tight">
+                <span className="px-3 py-1 rounded-full border bg-white shadow-sm">
+                  생성형AI기반 비즈니스 - <span className="text-emerald-700 font-semibold">Group 1</span>
+                </span>
               </div>
             </div>
           </header>
