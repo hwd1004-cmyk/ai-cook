@@ -82,11 +82,14 @@ export default function HomePage() {
   const [clickedIndex, setClickedIndex] = useState<number | null>(null)
 
   // 탭 전환
-  function switchMode(next: Mode) {
-    setMode(next)
-    setError(null); setSuccess(null)
-    setSuggests([]); setClickedIndex(null)
-  }
+function switchMode(next: Mode) {
+  setMode(next)
+  setError(null)
+  setSuccess(null)
+  // ✅ 탭 전환 시 추천 결과는 그대로 유지
+  // 필요하다면 탭별로 다른 데이터는 각각 state에서 관리 중이므로 그대로 둠
+}
+
 
   // 공통 레시피 생성
   async function generateRecipe(body: any, storeAs: 'pantry' | 'dish' = (body.mode as 'pantry'|'dish')) {
@@ -102,7 +105,7 @@ export default function HomePage() {
 
       if (storeAs === 'pantry') {
         setPantryRecipe(data)
-        try { localStorage.setItem('ai-cook:last:panry', JSON.stringify(data)) } catch {}
+        try { localStorage.setItem('ai-cook:last:pantry', JSON.stringify(data)) } catch {}
       } else {
         setDishRecipe(data)
         try { localStorage.setItem('ai-cook:last:dish', JSON.stringify(data)) } catch {}
@@ -182,23 +185,24 @@ export default function HomePage() {
   }
 
   // 추천 클릭→ dish로 생성하지만 pantry 슬롯에 기록
-  async function chooseSuggestion(idx: number) {
-    const item = suggests[idx]
-    if (!item) return
-    setClickedIndex(idx)
-    setTimeout(async () => {
-      setDishName(item.nameKo)
-      await generateRecipe({
-        mode: 'dish',
-        dishName: item.nameKo,
-        servings,
-        timeLimit,
-        allergies: splitList(allergiesText),
-        preferences: splitList(prefsText),
-        diets: splitList(dietsText),
-      }, 'pantry')
-    }, 150)
-  }
+// 수정본 (탭 간 독립)
+async function chooseSuggestion(idx: number) {
+  const item = suggests[idx]
+  if (!item) return
+  setClickedIndex(idx)
+  setTimeout(async () => {
+    // ✅ 요리명 탭 입력값을 건드리지 않음
+    await generateRecipe({
+      mode: 'dish',
+      dishName: item.nameKo,
+      servings,
+      timeLimit,
+      allergies: splitList(allergiesText),
+      preferences: splitList(prefsText),
+      diets: splitList(dietsText),
+    }, 'pantry') // 결과는 ‘재료로 찾기’ 슬롯에만 저장
+  }, 150)
+}
 
   // 공유
   function handleShare(recipe: Recipe | null) {
@@ -324,20 +328,27 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleMainButton}
-              disabled={loading || suggesting}
-              className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-semibold disabled:opacity-60
-                         transition active:scale-[0.99] hover:shadow-sm
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-            >
-              {mode === 'pantry'
-                ? (suggesting ? <>추천 불러오는 중 <LoadingDots /></> : '추천 불러오기')
-                : (loading ? <>생성 중 <LoadingDots /></> : '레시피 생성')}
-            </button>
-          </div>
+<div className="flex gap-2">
+  <button
+    type="button"
+    onClick={handleMainButton}
+    disabled={loading || suggesting}
+    className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-semibold disabled:opacity-60
+               transition active:scale-[0.99] hover:shadow-sm
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+    aria-busy={loading || suggesting}
+  >
+    {mode === 'pantry'
+      ? (suggesting
+          ? <>추천 불러오는 중 <LoadingDots /></>
+          : loading
+            ? <>레시피 생성 중 <LoadingDots /></>
+            : '추천 불러오기')
+      : (loading
+          ? <>생성 중 <LoadingDots /></>
+          : '레시피 생성')}
+  </button>
+</div>
 
           {(error || success) && (
             <div className={`mt-1 text-sm rounded-xl px-3 py-2 border ${error ? 'border-red-200 text-red-700 bg-red-50' : 'border-emerald-200 text-emerald-800 bg-emerald-50'}`}>
